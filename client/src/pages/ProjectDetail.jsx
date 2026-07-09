@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
+import socket from '../services/socket';
 
 function ProjectDetail() {
   const { id } = useParams();
@@ -15,6 +16,18 @@ function ProjectDetail() {
   useEffect(() => {
     cargarTareas();
     cargarUsuarios();
+  }, []);
+
+  // Escucha cambios en tiempo real
+   useEffect(() => {
+    socket.on('tareas-actualizadas', () => {
+      cargarTareas();
+    });
+
+    // Limpieza
+    return () => {
+      socket.off('tareas-actualizadas');
+    };
   }, []);
 
   async function cargarTareas() {
