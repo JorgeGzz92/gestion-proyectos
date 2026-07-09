@@ -3,25 +3,36 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 
 function ProjectDetail() {
-  const { id } = useParams(); // obtiene el :id de la URL, ej /proyectos/123
+  const { id } = useParams();
   const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
   const [titulo, setTitulo] = useState('');
+  const [asignadoNombre, setAsignadoNombre] = useState(''); // lo que el usuario escribe
   const [error, setError] = useState('');
 
   useEffect(() => {
     cargarTareas();
+    cargarUsuarios();
   }, []);
 
   async function cargarTareas() {
     try {
       const res = await api.get('/tasks');
-      // Filtramos solo las tareas que pertenecen a este proyecto
       const tareasDelProyecto = res.data.filter(
         (t) => t.proyecto === id || t.proyecto?._id === id
       );
       setTasks(tareasDelProyecto);
     } catch (err) {
       setError('No se pudieron cargar las tareas');
+    }
+  }
+
+  async function cargarUsuarios() {
+    try {
+      const res = await api.get('/users');
+      setUsers(res.data);
+    } catch (err) {
+      console.error('No se pudieron cargar los usuarios');
     }
   }
 
@@ -33,9 +44,24 @@ function ProjectDetail() {
       return;
     }
 
+    // Buscamos si lo que escribio coincide con un usuario real (autocompletado)
+    const usuarioEncontrado = users.find(
+      (u) => u.nombre.toLowerCase() === asignadoNombre.toLowerCase()
+    );
+
+    if (asignadoNombre.trim() && !usuarioEncontrado) {
+      setError('Ese usuario no existe. Elige uno de las sugerencias.');
+      return;
+    }
+
     try {
-      await api.post('/tasks', { titulo, proyecto: id });
+      await api.post('/tasks', {
+        titulo,
+        proyecto: id,
+        asignadoA: usuarioEncontrado ? usuarioEncontrado._id : undefined,
+      });
       setTitulo('');
+      setAsignadoNombre('');
       setError('');
       cargarTareas();
     } catch (err) {
@@ -74,6 +100,21 @@ function ProjectDetail() {
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
         />
+
+        {/* Autocompletado nativo con datalist */}
+        <input
+          type="text"
+          placeholder="Asignar a... (opcional, empieza a escribir)"
+          value={asignadoNombre}
+          onChange={(e) => setAsignadoNombre(e.target.value)}
+          list="lista-usuarios"
+        />
+        <datalist id="lista-usuarios">
+          {users.map((u) => (
+            <option key={u._id} value={u.nombre} />
+          ))}
+        </datalist>
+
         {error && <span className="error">{error}</span>}
         <button type="submit">Agregar tarea</button>
       </form>
@@ -84,6 +125,11 @@ function ProjectDetail() {
         <div className="card" key={t._id}>
           <h3>{t.titulo}</h3>
           <span className={`badge ${t.estado.replace(' ', '-')}`}>{t.estado}</span>
+          {t.asignadoA && (
+            <p style={{ marginTop: '6px', fontSize: '13px', opacity: 0.8 }}>
+              Asignado a: {t.asignadoA.nombre || 'Usuario'}
+            </p>
+          )}
           <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
             <select
               value={t.estado}
