@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import Card from '../components/Card';
 
 function Users() {
   const [users, setUsers] = useState([]);
@@ -94,12 +95,12 @@ function Users() {
       </form>
 
       {users.map((u) => (
-        <div className="card" key={u._id}>
+        <Card key={u._id}>
           <h3>{u.nombre}</h3>
           <p>{u.email}</p>
           <p>Rol: {u.rol}</p>
           <button onClick={() => handleDelete(u._id)}>Eliminar</button>
-        </div>
+        </Card>
       ))}
     </div>
   );

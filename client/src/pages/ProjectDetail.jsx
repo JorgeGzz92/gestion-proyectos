@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
+import Card from '../components/Card';
+import StatusBadge from '../components/StatusBadge';
 
 function ProjectDetail() {
   const { id } = useParams();
@@ -122,9 +124,9 @@ function ProjectDetail() {
       {tasks.length === 0 && <p>No hay tareas todavía.</p>}
 
       {tasks.map((t) => (
-        <div className="card" key={t._id}>
+        <Card key={t._id}>
           <h3>{t.titulo}</h3>
-          <span className={`badge ${t.estado.replace(' ', '-')}`}>{t.estado}</span>
+          <StatusBadge estado={t.estado} />
           {t.asignadoA && (
             <p style={{ marginTop: '6px', fontSize: '13px', opacity: 0.8 }}>
               Asignado a: {t.asignadoA.nombre || 'Usuario'}
@@ -141,7 +143,7 @@ function ProjectDetail() {
             </select>
             <button onClick={() => handleDelete(t._id)}>Eliminar</button>
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import Card from '../components/Card';
 
 function Projects() {
   const [projects, setProjects] = useState([]);
@@ -73,14 +74,14 @@ function Projects() {
       </form>
 
       {projects.map((p) => (
-        <div className="card" key={p._id}>
+        <Card key={p._id}>
           <h3>{p.nombre}</h3>
           <p>{p.descripcion}</p>
           <p>Estado: {p.estado}</p>
           <Link to={`/proyectos/${p._id}`}>Ver tareas</Link>
           {' | '}
           <button onClick={() => handleDelete(p._id)}>Eliminar</button>
-        </div>
+        </Card>
       ))}
     </div>
   );
