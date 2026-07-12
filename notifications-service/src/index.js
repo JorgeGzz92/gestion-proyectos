@@ -4,6 +4,8 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { Redis } = require('ioredis');
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -20,8 +22,22 @@ app.get('/api/health', (req, res) => {
 });
 
 // Historial de mensajes en memoria, agrupado por proyecto
-// Nota: se pierde si el servidor se reinicia
+// Nota: se pierde si el servidor se reinicia (no es persistente en base de datos)
 const historialMensajes = {}; // { proyectoId: [mensajes] }
+
+const pubClient = new Redis(process.env.REDIS_URL, {
+  tls: {}, // Upstash requiere conexion TLS/SSL
+  maxRetriesPerRequest: 3,
+});
+const subClient = pubClient.duplicate();
+
+pubClient.on('connect', () => console.log('Redis (publisher) conectado correctamente'));
+pubClient.on('error', (err) => console.error('Error en Redis (publisher):', err.message));
+subClient.on('error', (err) => console.error('Error en Redis (subscriber):', err.message));
+
+// Le decimos a Socket.io que use Redis como "adaptador" para distribuir eventos.
+
+io.adapter(createAdapter(pubClient, subClient));
 
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
@@ -40,11 +56,12 @@ io.on('connection', (socket) => {
     }
     historialMensajes[data.proyectoId].push(data);
 
-    // Limitamos a los ultimos 50 mensajes por proyecto para no crecer indefinidamente
     if (historialMensajes[data.proyectoId].length > 50) {
       historialMensajes[data.proyectoId].shift();
     }
 
+    // io.emit ahora viaja a traves del adaptador de Redis (Pub/Sub) automaticamente,
+    // sin que tengamos que cambiar la forma en que lo llamamos
     io.emit('chat-message', data);
   });
 
