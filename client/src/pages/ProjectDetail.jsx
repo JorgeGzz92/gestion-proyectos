@@ -4,6 +4,7 @@ import { projectsApi, usersApi } from '../services/api';
 import socket from '../services/socket';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
+import Chat from '../components/Chat';
 
 function ProjectDetail() {
   const { id } = useParams();
@@ -147,6 +148,8 @@ function ProjectDetail() {
           </div>
         </Card>
       ))}
+
+      <Chat proyectoId={id} nombreUsuario="Jorge" />
     </div>
   );
 }

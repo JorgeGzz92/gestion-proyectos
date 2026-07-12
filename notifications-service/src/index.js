@@ -19,12 +19,33 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'notifications-service' });
 });
 
+// Historial de mensajes en memoria, agrupado por proyecto
+// Nota: se pierde si el servidor se reinicia
+const historialMensajes = {}; // { proyectoId: [mensajes] }
+
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
 
-  // Evento de chat: alguien manda un mensaje, se lo reenviamos a todos
+  // El cliente pide el historial reciente de un proyecto especifico
+  socket.on('unirse-proyecto', (proyectoId) => {
+    socket.join(proyectoId);
+    const historial = historialMensajes[proyectoId] || [];
+    socket.emit('historial-chat', historial);
+  });
+
+  // Evento de chat: alguien manda un mensaje, se guarda y se reenvia a todos
   socket.on('chat-message', (data) => {
-    io.emit('chat-message', data); // reenvia el mensaje a todos los conectados
+    if (!historialMensajes[data.proyectoId]) {
+      historialMensajes[data.proyectoId] = [];
+    }
+    historialMensajes[data.proyectoId].push(data);
+
+    // Limitamos a los ultimos 50 mensajes por proyecto para no crecer indefinidamente
+    if (historialMensajes[data.proyectoId].length > 50) {
+      historialMensajes[data.proyectoId].shift();
+    }
+
+    io.emit('chat-message', data);
   });
 
   // Evento generico de notificacion (ej. tarea creada, proyecto actualizado)
