@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../services/api';
+import { usersApi } from '../services/api';
 import Card from '../components/Card';
 
 function Users() {
@@ -16,7 +16,7 @@ function Users() {
 
   async function cargarUsuarios() {
     try {
-      const res = await api.get('/users');
+      const res = await usersApi.get('/users');
       setUsers(res.data);
     } catch (err) {
       setError('No se pudieron cargar los usuarios');
@@ -26,7 +26,6 @@ function Users() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    // Validaciones basicas
     if (!nombre.trim() || !email.trim() || !password.trim()) {
       setError('Nombre, email y contraseña son obligatorios');
       return;
@@ -41,7 +40,7 @@ function Users() {
     }
 
     try {
-      await api.post('/users', { nombre, email, password, rol });
+      await usersApi.post('/users', { nombre, email, password, rol });
       setNombre('');
       setEmail('');
       setPassword('');
@@ -56,7 +55,7 @@ function Users() {
   async function handleDelete(id) {
     if (!confirm('¿Eliminar este usuario?')) return;
     try {
-      await api.delete(`/users/${id}`);
+      await usersApi.delete(`/users/${id}`);
       cargarUsuarios();
     } catch (err) {
       setError('Error al eliminar el usuario');
@@ -68,24 +67,9 @@ function Users() {
       <h1>Usuarios</h1>
 
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Nombre completo"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Contraseña (mín. 6 caracteres)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <input type="text" placeholder="Nombre completo" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+        <input type="email" placeholder="Correo electrónico" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input type="password" placeholder="Contraseña (mín. 6 caracteres)" value={password} onChange={(e) => setPassword(e.target.value)} />
         <select value={rol} onChange={(e) => setRol(e.target.value)}>
           <option value="miembro">Miembro</option>
           <option value="admin">Admin</option>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
+import { projectsApi } from '../services/api';
 import Card from '../components/Card';
 
 function Projects() {
@@ -9,14 +9,13 @@ function Projects() {
   const [descripcion, setDescripcion] = useState('');
   const [error, setError] = useState('');
 
-  // Cargar proyectos cuando el componente aparece en pantalla
   useEffect(() => {
     cargarProyectos();
   }, []);
 
   async function cargarProyectos() {
     try {
-      const res = await api.get('/projects');
+      const res = await projectsApi.get('/projects');
       setProjects(res.data);
     } catch (err) {
       setError('No se pudieron cargar los proyectos');
@@ -24,20 +23,19 @@ function Projects() {
   }
 
   async function handleSubmit(e) {
-    e.preventDefault(); // evita que el formulario recargue la pagina
+    e.preventDefault();
 
-    // Validacion simple
     if (!nombre.trim()) {
       setError('El nombre del proyecto es obligatorio');
       return;
     }
 
     try {
-      await api.post('/projects', { nombre, descripcion });
+      await projectsApi.post('/projects', { nombre, descripcion });
       setNombre('');
       setDescripcion('');
       setError('');
-      cargarProyectos(); // refresca la lista
+      cargarProyectos();
     } catch (err) {
       setError('Error al crear el proyecto');
     }
@@ -46,7 +44,7 @@ function Projects() {
   async function handleDelete(id) {
     if (!confirm('¿Eliminar este proyecto?')) return;
     try {
-      await api.delete(`/projects/${id}`);
+      await projectsApi.delete(`/projects/${id}`);
       cargarProyectos();
     } catch (err) {
       setError('Error al eliminar el proyecto');
@@ -58,17 +56,8 @@ function Projects() {
       <h1>Proyectos</h1>
 
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Nombre del proyecto"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-        />
-        <textarea
-          placeholder="Descripción (opcional)"
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-        />
+        <input type="text" placeholder="Nombre del proyecto" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+        <textarea placeholder="Descripción (opcional)" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
         {error && <span className="error">{error}</span>}
         <button type="submit">Crear proyecto</button>
       </form>

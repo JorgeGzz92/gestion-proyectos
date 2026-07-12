@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import api from '../services/api';
+import { projectsApi, usersApi } from '../services/api';
+import socket from '../services/socket';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
-import socket from '../services/socket';
 
 function ProjectDetail() {
   const { id } = useParams();
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [titulo, setTitulo] = useState('');
-  const [asignadoNombre, setAsignadoNombre] = useState(''); // lo que el usuario escribe
+  const [asignadoNombre, setAsignadoNombre] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -18,24 +18,19 @@ function ProjectDetail() {
     cargarUsuarios();
   }, []);
 
-  // Escucha cambios en tiempo real
-   useEffect(() => {
-    socket.on('tareas-actualizadas', () => {
+  useEffect(() => {
+    socket.on('notify', () => {
       cargarTareas();
     });
-
-    // Limpieza
     return () => {
-      socket.off('tareas-actualizadas');
+      socket.off('notify');
     };
   }, []);
 
   async function cargarTareas() {
     try {
-      const res = await api.get('/tasks');
-      const tareasDelProyecto = res.data.filter(
-        (t) => t.proyecto === id || t.proyecto?._id === id
-      );
+      const res = await projectsApi.get('/tasks');
+      const tareasDelProyecto = res.data.filter((t) => t.proyecto === id || t.proyecto?._id === id);
       setTasks(tareasDelProyecto);
     } catch (err) {
       setError('No se pudieron cargar las tareas');
@@ -44,11 +39,16 @@ function ProjectDetail() {
 
   async function cargarUsuarios() {
     try {
-      const res = await api.get('/users');
+      const res = await usersApi.get('/users'); // ahora viene de users-service, otro microservicio
       setUsers(res.data);
     } catch (err) {
       console.error('No se pudieron cargar los usuarios');
     }
+  }
+
+  function nombreDeUsuario(userId) {
+    const u = users.find((u) => u._id === userId);
+    return u ? u.nombre : null;
   }
 
   async function handleSubmit(e) {
@@ -59,10 +59,7 @@ function ProjectDetail() {
       return;
     }
 
-    // Buscamos si lo que escribio coincide con un usuario real (autocompletado)
-    const usuarioEncontrado = users.find(
-      (u) => u.nombre.toLowerCase() === asignadoNombre.toLowerCase()
-    );
+    const usuarioEncontrado = users.find((u) => u.nombre.toLowerCase() === asignadoNombre.toLowerCase());
 
     if (asignadoNombre.trim() && !usuarioEncontrado) {
       setError('Ese usuario no existe. Elige uno de las sugerencias.');
@@ -70,7 +67,7 @@ function ProjectDetail() {
     }
 
     try {
-      await api.post('/tasks', {
+      await projectsApi.post('/tasks', {
         titulo,
         proyecto: id,
         asignadoA: usuarioEncontrado ? usuarioEncontrado._id : undefined,
@@ -79,6 +76,7 @@ function ProjectDetail() {
       setAsignadoNombre('');
       setError('');
       cargarTareas();
+      socket.emit('notify', { tipo: 'tarea-creada', proyecto: id }); // avisa a otros clientes
     } catch (err) {
       setError('Error al crear la tarea');
     }
@@ -86,8 +84,9 @@ function ProjectDetail() {
 
   async function cambiarEstado(taskId, nuevoEstado) {
     try {
-      await api.put(`/tasks/${taskId}`, { estado: nuevoEstado });
+      await projectsApi.put(`/tasks/${taskId}`, { estado: nuevoEstado });
       cargarTareas();
+      socket.emit('notify', { tipo: 'tarea-actualizada', proyecto: id });
     } catch (err) {
       setError('Error al actualizar la tarea');
     }
@@ -96,8 +95,9 @@ function ProjectDetail() {
   async function handleDelete(taskId) {
     if (!confirm('¿Eliminar esta tarea?')) return;
     try {
-      await api.delete(`/tasks/${taskId}`);
+      await projectsApi.delete(`/tasks/${taskId}`);
       cargarTareas();
+      socket.emit('notify', { tipo: 'tarea-eliminada', proyecto: id });
     } catch (err) {
       setError('Error al eliminar la tarea');
     }
@@ -109,14 +109,7 @@ function ProjectDetail() {
       <h1>Tareas del proyecto</h1>
 
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Título de la tarea"
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-        />
-
-        {/* Autocompletado nativo con datalist */}
+        <input type="text" placeholder="Título de la tarea" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
         <input
           type="text"
           placeholder="Asignar a... (opcional, empieza a escribir)"
@@ -129,7 +122,6 @@ function ProjectDetail() {
             <option key={u._id} value={u.nombre} />
           ))}
         </datalist>
-
         {error && <span className="error">{error}</span>}
         <button type="submit">Agregar tarea</button>
       </form>
@@ -140,16 +132,13 @@ function ProjectDetail() {
         <Card key={t._id}>
           <h3>{t.titulo}</h3>
           <StatusBadge estado={t.estado} />
-          {t.asignadoA && (
+          {t.asignadoA && nombreDeUsuario(t.asignadoA) && (
             <p style={{ marginTop: '6px', fontSize: '13px', opacity: 0.8 }}>
-              Asignado a: {t.asignadoA.nombre || 'Usuario'}
+              Asignado a: {nombreDeUsuario(t.asignadoA)}
             </p>
           )}
           <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-            <select
-              value={t.estado}
-              onChange={(e) => cambiarEstado(t._id, e.target.value)}
-            >
+            <select value={t.estado} onChange={(e) => cambiarEstado(t._id, e.target.value)}>
               <option value="pendiente">Pendiente</option>
               <option value="en progreso">En progreso</option>
               <option value="completada">Completada</option>
