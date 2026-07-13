@@ -7,4 +7,6 @@ const projectSchema = new mongoose.Schema({
   creadoPor: { type: mongoose.Schema.Types.ObjectId }
 }, { timestamps: true });
 
+projectSchema.index({ estado: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Project', projectSchema);

@@ -6,11 +6,13 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const { Redis } = require('ioredis');
+const compression = require('compression');
 
 const app = express();
 const httpServer = http.createServer(app);
 
 app.use(cors());
+app.use(compression());
 app.use(express.json());
 
 const io = new Server(httpServer, {
