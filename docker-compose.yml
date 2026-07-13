@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+
+  users-service:
+    build: ./users-service
+    container_name: users-service
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./users-service/.env
+    restart: unless-stopped
+
+  projects-service:
+    build: ./projects-service
+    container_name: projects-service
+    ports:
+      - "5002:5002"
+    env_file:
+      - ./projects-service/.env
+    restart: unless-stopped
+
+  notifications-service:
+    build: ./notifications-service
+    container_name: notifications-service
+    ports:
+      - "5003:5003"
+    env_file:
+      - ./notifications-service/.env
+    restart: unless-stopped
+
+  client:
+    build: ./client
+    container_name: client
+    ports:
+      - "8080:80"
+    depends_on:
+      - users-service
+      - projects-service
+      - notifications-service
+    restart: unless-stopped
